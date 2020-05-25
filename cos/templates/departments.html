@@ -1,0 +1,22 @@
+{% extends "layout.html" %}
+{% block content %}
+    <h1>Departments</h1>
+    {% for department in departments.items %}
+        <article class="media content-section">
+          <div class="media-body">
+            <h2 style="font-size:20px"><a class="article-title" href="{{ url_for('view_department', title=department.title) }}">{{ department.title }}</a></h2>
+          </div>
+        </article>
+    {% endfor %}
+    {% for page_num in departments.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+      {% if page_num %}
+        {% if departments.page == page_num %}
+          <a class="btn btn-info mb-4" href="{{ url_for('departments', page=page_num) }}">{{ page_num }}</a>
+        {% else %}
+          <a class="btn btn-outline-info mb-4" href="{{ url_for('departments', page=page_num) }}">{{ page_num }}</a>
+        {% endif %}
+      {% else %}
+        ...
+      {% endif %}
+    {% endfor %}
+{% endblock content %}
