@@ -1,9 +1,15 @@
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
 from flask_login import current_user
-from wtforms import SelectField, StringField, PasswordField, SubmitField, BooleanField, TextAreaField
-from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError, InputRequired
+from wtforms import RadioField, IntegerField, SelectField, StringField, PasswordField, SubmitField, BooleanField, TextAreaField
+from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError, InputRequired, Required
 from cos.models import User, Department
+
+
+class SortForm(FlaskForm):
+    sort = SelectField('Sort by', coerce=int, choices=[(1, 'rating_desc'), (
+        2, 'rating_asc'), (3, 'title_desc'), (4, 'title_asc'), (5, 'subject_code_asc')])
+    submit = SubmitField('Go')
 
 
 class RegistrationForm(FlaskForm):
@@ -11,9 +17,19 @@ class RegistrationForm(FlaskForm):
                            validators=[DataRequired(), Length(min=2, max=20)])
     first_name = StringField('First Name',
                              validators=[DataRequired(), Length(min=2, max=20)])
+    last_name = StringField('Last Name',
+                            validators=[Length(min=2, max=20)])
     email = StringField('Email',
                         validators=[DataRequired(), Email()])
+
+    department_id = SelectField(
+        'Department', coerce=int)
+
+    title = SelectField(
+        'Title', coerce=int, validators=[InputRequired()])
+
     password = PasswordField('Password', validators=[DataRequired()])
+
     confirm_password = PasswordField('Confirm Password',
                                      validators=[DataRequired(), EqualTo('password')])
     submit = SubmitField('Sign Up')
@@ -42,15 +58,9 @@ class LoginForm(FlaskForm):
 class UpdateAccountForm(FlaskForm):
     username = StringField('Username',
                            validators=[DataRequired(), Length(min=2, max=20)])
-    email = StringField('Email',
-                        validators=[DataRequired(), Email()])
     picture = FileField('Update Profile Picture', validators=[
-                        FileAllowed(['jpg', 'png'])])
+        FileAllowed(['jpg', 'png'])])
     submit = SubmitField('Update')
-    department_id = SelectField(
-        'Department', coerce=int, validators=[InputRequired()])
-    # department_id = SelectField('Department', choices=[(1, 'Aerospace Engineering'), (2, 'Agricultural and Food Engineering'), (3, 'Architecture and Regional Planning'), (4, 'Biotechnology'), (5, 'Chemical Engineering'), (6, 'Chemistry'), (7, 'Civil Engineering'), (8, 'Computer Science and Engineering'), (9, 'Electrical Engineering'), (10, 'Electronics and Elctrical Communication Engineering'), (
-    #  11, 'Geology and Geophysics'), (12, 'Humanities and Social Sciences'), (13, 'Industrial and Systems Engineering'), (14, 'Mathematics'), (15, 'Mechanical Engineering'), (16, 'Metallurgical and Materials Engineering'), (17, 'Mining Engineering'), (18, 'Ocean Engineering and Naval Architecture'), (19, 'Physics')], validators=[DataRequired()])
 
     def validate_username(self, username):
         if username.data != current_user.username:
@@ -59,19 +69,37 @@ class UpdateAccountForm(FlaskForm):
                 raise ValidationError(
                     'That username is taken. Please choose a different one.')
 
-    def validate_email(self, email):
-        if email.data != current_user.email:
-            user = User.query.filter_by(email=email.data).first()
-            if user:
-                raise ValidationError(
-                    'That email is taken. Please choose a different one.')
-
 
 class SearchForm(FlaskForm):
     department_id = SelectField(
         'Department', coerce=int, validators=[InputRequired()])
     submit = SubmitField('Search Users')
     submit2 = SubmitField('Search Subjects')
+
+
+class ModifyForm(FlaskForm):
+    submit = SubmitField('Modify Subject')
+    submit2 = SubmitField('Modify Department')
+
+
+class ModifySubjectForm(FlaskForm):
+    title = StringField('Title')
+    code = StringField('Code')
+    slot = StringField('Slot')
+    content = TextAreaField('Content')
+    department_id = IntegerField('Department ID')
+    submit = SubmitField('Add subject')
+
+    title_delete = StringField('Title')
+    submit2 = SubmitField('Delete Subject')
+
+
+class ModifyDepartmentForm(FlaskForm):
+    title = StringField('Title')
+    submit = SubmitField('Add subject')
+
+    title_delete = StringField('Title')
+    submit2 = SubmitField('Delete Subject')
 
 
 class SearchUserForm(FlaskForm):
@@ -87,6 +115,14 @@ class SearchSubjectForm(FlaskForm):
 
 
 class PostForm(FlaskForm):
+    title = StringField('Title', validators=[DataRequired()])
+    content = TextAreaField('Content', validators=[DataRequired()])
+    submit = SubmitField('Post')
+
+
+class ReviewForm(FlaskForm):
+    rating = SubmitField(
+        'Rating', validators=[InputRequired()])
     title = StringField('Title', validators=[DataRequired()])
     content = TextAreaField('Content', validators=[DataRequired()])
     submit = SubmitField('Post')

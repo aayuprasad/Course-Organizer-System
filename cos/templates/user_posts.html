@@ -1,9 +1,30 @@
 {% extends "layout.html" %}
 {% block content %}
-    <h1 class="mb-3">Posts by {{ user.username }} ({{ posts.total }})</h1>
+    <img  style="float:right" class="img-rounded account-img" alt="Cinque Terre" src="{{ url_for('static', filename='profile_pics/' + user.image_file) }}">
+
+    <div class="content-heading">
+    <h1 class="mb-3"> {{ user.username }} </h1>
+    <h5> Name: {{ user.first_name }}</h5>
+    {% if user.title == '1' %}
+      <h5> Student </h5>
+    {% elif user.title == '2' %}
+      <h5> Teacher </h5>
+    {% endif %}
+    <h5> Department: {{ department_title }}</h5>
+<h5>{{ user.followers.count() }} followers |
+              {% if user.id == current_user.id %}
+                  <a href="{{ url_for('account') }}">Edit your profile</a>
+              {% elif not current_user.is_following(user) %}
+                  <a href="{{ url_for('follow', username=user.username) }}">Follow</a>
+              {% else %}
+                  <a href="{{ url_for('unfollow', username=user.username) }}">Unfollow</a>
+              {% endif %}
+              </h5>
+  </div>
+<hr>
+    <h4 class="mb-3">Posts ({{ posts.total }}):</h1>
     {% for post in posts.items %}
         <article class="media content-section">
-          <img class="rounded-circle article-img" src="{{ url_for('static', filename='profile_pics/' + post.author.image_file) }}">
           <div class="media-body">
             <div class="article-metadata">
               <a class="mr-2" href="{{ url_for('user_posts', username=post.author.username) }}">{{ post.author.username }}</a>

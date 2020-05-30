@@ -1,10 +1,10 @@
 import os
 import secrets
 from PIL import Image
-from flask import render_template, url_for, flash, redirect, request, abort
+from flask import render_template, url_for, flash, redirect, request, abort, Markup
 from cos import app, db, bcrypt, mail
-from cos.forms import (RegistrationForm, LoginForm, UpdateAccountForm,
-                       PostForm, RequestResetForm, ResetPasswordForm, SearchForm, SearchUserForm, SearchSubjectForm)
+from cos.forms import (SortForm, RegistrationForm, LoginForm, UpdateAccountForm,
+                       PostForm, RequestResetForm, ResetPasswordForm, SearchForm, SearchUserForm, SearchSubjectForm, ModifyForm, ModifySubjectForm, ModifyDepartmentForm, ReviewForm)
 from cos.models import User, Post, Department, Subject, Review
 from flask_login import login_user, current_user, logout_user, login_required
 from flask_mail import Message
@@ -19,6 +19,66 @@ def home():
     return render_template('home.html', posts=posts)
 
 
+@app.route("/admin", methods=['GET', 'POST'])
+@login_required
+def admin():
+    if current_user.id != 1:
+        flash('Access denied!', danger)
+        return redirect(url_for('home'))
+    else:
+        form = ModifyForm()
+        if form.submit.data:
+            return redirect(url_for('modify_subject'))
+        elif form.submit2.data:
+            return redirect(url_for('modify_department'))
+    return render_template('admin.html', form=form)
+
+
+@app.route("/admin/modify_subject", methods=['GET', 'POST'])
+@login_required
+def modify_subject():
+    form = ModifySubjectForm()
+    if current_user.id != 1:
+        flash('Access denied!', 'danger')
+        return redirect(url_for('home'))
+    else:
+        if form.submit.data:
+            subject = Subject(title=form.title.data, content=form.content.data,
+                              department_id=form.department_id.data, code=form.code.data, slot=form.slot.data)
+            db.session.add(subject)
+            db.session.commit()
+            flash('Subject added!', 'success')
+        elif form.submit2.data:
+            subject = Subject.query.filter_by(
+                title=form.title_delete.data).first_or_404()
+            db.session.delete(subject)
+            db.session.commit()
+            flash('Subject deleted!', 'danger')
+    return render_template('modify_subject.html', form=form)
+
+
+@app.route("/admin/modify_department", methods=['GET', 'POST'])
+@login_required
+def modify_department():
+    form = ModifyDepartmentForm()
+    if current_user.id != 1:
+        flash('Access denied!', 'danger')
+        return redirect(url_for('home'))
+    else:
+        if form.submit.data:
+            department = Department(title=form.title.data)
+            db.session.add(department)
+            db.session.commit()
+            flash('Department added!', 'success')
+        elif form.submit2.data:
+            department = Department.query.filter_by(
+                title=form.title_delete.data).first_or_404()
+            db.session.delete(department)
+            db.session.commit()
+            flash('Department deleted!', 'danger')
+    return render_template('modify_department.html', form=form)
+
+
 @app.route("/about")
 def about():
     return render_template('about.html', title='About')
@@ -28,12 +88,20 @@ def about():
 def register():
     if current_user.is_authenticated:
         return redirect(url_for('home'))
+    department_list = [(i.id, i.title) for i in Department.query.all()]
+    title_list = [(1, 'Student'), (2, 'Teacher')]
     form = RegistrationForm()
+    form.department_id.choices = department_list
+    form.title.choices = title_list
+
     if form.validate_on_submit():
         hashed_password = bcrypt.generate_password_hash(
             form.password.data).decode('utf-8')
+        department_id = form.department_id.data
+        title = form.title.data
         user = User(username=form.username.data,
-                    email=form.email.data, password=hashed_password, first_name=form.first_name.data)
+                    email=form.email.data, password=hashed_password, first_name=form.first_name.data, last_name=form.last_name.data, department_id=department_id, title=title)
+
         db.session.add(user)
         db.session.commit()
         flash('Your account has been created! You are now able to log in.', 'success')
@@ -82,24 +150,20 @@ def save_picture(form_picture):
 @login_required
 def account():
     form = UpdateAccountForm()
-    department_list = [(i.id, i.title) for i in Department.query.all()]
-    form.department_id.choices = department_list
     if form.validate_on_submit():
         if form.picture.data:
             picture_file = save_picture(form.picture.data)
             current_user.image_file = picture_file
         current_user.username = form.username.data
-        current_user.email = form.email.data
-        current_user.department_id = form.department_id.data
         db.session.add(current_user)
         db.session.commit()
         flash('Your account has been updated!', 'success')
         return redirect(url_for('account'))
     elif request.method == 'GET':
         form.username.data = current_user.username
-        form.email.data = current_user.email
     image_file = url_for(
         'static', filename='profile_pics/' + current_user.image_file)
+
     return render_template('account.html', title='Account',
                            image_file=image_file, form=form)
 
@@ -178,6 +242,26 @@ def user(department_id):
     return jsonify({'users': userArray})
 
 
+@app.route("/students")
+@login_required
+def students():
+    page = request.args.get('page', 1, type=int)
+    students = User.query.filter_by(title='1').order_by(
+        User.username.asc()).paginate(page=page, per_page=5)
+    department_list = [i.title for i in Department.query.all()]
+    return render_template('students.html', students=students, department_list=department_list)
+
+
+@app.route("/teachers")
+@login_required
+def teachers():
+    page = request.args.get('page', 1, type=int)
+    teachers = User.query.filter_by(title='2').order_by(
+        User.username.asc()).paginate(page=page, per_page=5)
+    department_list = [i.title for i in Department.query.all()]
+    return render_template('teachers.html', teachers=teachers, department_list=department_list)
+
+
 @app.route("/post/<int:post_id>")
 def post(post_id):
     post = Post.query.get_or_404(post_id)
@@ -217,13 +301,17 @@ def delete_post(post_id):
 
 
 @app.route("/user/<string:username>")
+@login_required
 def user_posts(username):
     page = request.args.get('page', 1, type=int)
     user = User.query.filter_by(username=username).first_or_404()
     posts = Post.query.filter_by(author=user)\
         .order_by(Post.date_posted.desc())\
         .paginate(page=page, per_page=5)
-    return render_template('user_posts.html', posts=posts, user=user)
+    department = Department.query.filter_by(
+        id=user.department_id).first_or_404()
+    department_title = department.title
+    return render_template('user_posts.html', posts=posts, user=user, department_title=department_title)
 
 
 def send_reset_email(user):
@@ -278,13 +366,29 @@ def departments():
     return render_template('departments.html', title='Departments', departments=departments)
 
 
-@app.route("/departments/<title>")
+@app.route("/departments/<title>", methods=['POST', 'GET'])
 def view_department(title):
+    form = SortForm()
     department = Department.query.filter_by(title=title).first_or_404()
     page = request.args.get('page', 1, type=int)
-    subjects = Subject.query.filter_by(author=department).order_by(
-        Subject.title.desc()).paginate(page=page, per_page=4)
-    return render_template('view_department.html', department=department, subjects=subjects)
+    subjects = Subject.query.paginate(page=page, per_page=4)
+    if form.submit.data:
+        if form.sort.data == 1:
+            subjects = Subject.query.filter_by(author=department).order_by(
+                Subject.average_rating.desc()).paginate(page=page, per_page=4)
+        elif form.sort.data == 2:
+            subjects = Subject.query.filter_by(author=department).order_by(
+                Subject.average_rating.asc()).paginate(page=page, per_page=4)
+        elif form.sort.data == 3:
+            subjects = Subject.query.filter_by(author=department).order_by(
+                Subject.title.desc()).paginate(page=page, per_page=4)
+        elif form.sort.data == 4:
+            subjects = Subject.query.filter_by(author=department).order_by(
+                Subject.title.asc()).paginate(page=page, per_page=4)
+        elif form.sort.data == 5:
+            subjects = Subject.query.filter_by(author=department).order_by(
+                Subject.code.asc()).paginate(page=page, per_page=4)
+    return render_template('view_department.html', department=department, subjects=subjects, form=form)
 
 
 @app.route("/subjects/<subject_title>/details")
@@ -292,22 +396,164 @@ def view_subject_details(subject_title):
     subject = Subject.query.filter_by(title=subject_title).first_or_404()
     page = request.args.get('page', 1, type=int)
     reviews = Review.query.filter_by(receiver=subject)\
+        .order_by(Review.date_posted.desc())
+
+    labels = ['5', '4.5', '4', '3.5', '3', '2.5', '2', '1.5', '1', '.5']
+    values = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    colors = ["#F7464A", "#46BFBD", "#FDB45C", "#FEDCBA",
+              "#ABCDEF", "#DDDDDD", "#ABCABC", "#4169E1", "#C71585", "#FF4500"]
+
+    total = 0
+    x = 0
+    for review in reviews:
+        total = total + review.rating
+        x = x + 1
+        index = int(10 - 2 * review.rating)
+        values[index] = values[index] + 1
+    maxi = max(values)
+    if x != 0:
+        average_rating = float(total / x)
+        subject.average_rating = average_rating
+        db.session.commit()
+        average_rating = "{0:.3f}".format(average_rating)
+    else:
+        average_rating = 0
+    reviews = Review.query.filter_by(receiver=subject)\
         .order_by(Review.date_posted.desc())\
         .paginate(page=page, per_page=5)
-    return render_template('subject_details.html', reviews=reviews, subject=subject)
+
+    user_review = Review.query.filter_by(
+        user_id=current_user.id, receiver=subject).first()
+    if not user_review:
+        legend = 'Add Review'
+    else:
+        legend = 'Modify Review'
+    return render_template('subject_details.html', reviews=reviews, subject=subject, legend=legend, average_rating=average_rating, labels=labels, values=values, max=maxi)
 
 
 @app.route("/subjects/<subject_title>/review/new", methods=['GET', 'POST'])
 @login_required
 def new_review(subject_title):
     subject = Subject.query.filter_by(title=subject_title).first_or_404()
-    form = PostForm()
+    form = ReviewForm()
+    legend = 'Add Review'
+    user_review = Review.query.filter_by(
+        subject_id=subject.id, user_id=current_user.id).first()
+    if user_review:
+        legend = 'Modify Review'
     if form.validate_on_submit():
+        rating = request.form['rating']
+        if rating == "5":
+            subject_rating = 5
+        elif rating == "4 and a half":
+            subject_rating = 4.5
+        elif rating == "4":
+            subject_rating = 4
+        elif rating == "3 and a half":
+            subject_rating = 3.5
+        elif rating == "3":
+            subject_rating = 3
+        elif rating == "2 and a half":
+            subject_rating = 2.5
+        elif rating == "2":
+            subject_rating = 2
+        elif rating == "1 and a half":
+            subject_rating = 1.5
+        elif rating == "1":
+            subject_rating = 1
+        elif rating == "half":
+            subject_rating = 0.5
+        else:
+            subject_rating = 0
+        if legend == 'Modify Review':
+            db.session.delete(user_review)
+            db.session.commit()
         review = Review(title=form.title.data,
-                        content=form.content.data, reviewer=current_user, receiver=subject)
+                        content=form.content.data, reviewer=current_user, receiver=subject, rating=subject_rating)
         db.session.add(review)
         db.session.commit()
         flash('Your review has been posted!', 'success')
-        return redirect(url_for('home'))
-    return render_template('create_review.html', title='New Review',
-                           form=form, legend='New Review')
+        return redirect(url_for('view_subject_details', subject_title=subject_title))
+    elif request.method == 'GET' and user_review:
+        form.title.data = user_review.title
+        form.content.data = user_review.content
+    return render_template('create_review.html', title='Add Review',
+                           form=form, legend=legend, review=user_review)
+
+
+@app.route("/review/<int:review_id>/delete", methods=['POST'])
+@login_required
+def delete_review(review_id):
+    review = Review.query.get_or_404(review_id)
+    subject = Subject.query.filter_by(id=review.subject_id).first()
+    if review.reviewer != current_user:
+        abort(403)
+    db.session.delete(review)
+    db.session.commit()
+    flash('Your review has been deleted!', 'danger')
+    return redirect(url_for('view_subject_details', subject_title=subject.title))
+
+
+@app.route('/follow/<username>')
+@login_required
+def follow(username):
+    user = User.query.filter_by(username=username).first()
+    if user is None:
+        flash('User %s not found.' % username)
+        return redirect(url_for('index'))
+    if user == current_user:
+        flash('You can\'t follow yourself!')
+        return redirect(url_for('user_posts', username=username))
+    u = current_user.follow(user)
+    if u is None:
+        flash('Cannot follow ' + username + '.')
+        return redirect(url_for('user_posts', username=username))
+    db.session.add(u)
+    db.session.commit()
+    flash('You are now following ' + username + '!', 'success')
+    return redirect(url_for('user_posts', username=username))
+
+
+@app.route('/unfollow/<username>')
+@login_required
+def unfollow(username):
+    user = User.query.filter_by(username=username).first()
+    if user is None:
+        flash('User %s not found.' % username)
+        return redirect(url_for('index'))
+    if user == current_user:
+        flash('You can\'t unfollow yourself!')
+        return redirect(url_for('user_posts', username=username))
+    u = current_user.unfollow(user)
+    if u is None:
+        flash('Cannot unfollow ' + username + '.')
+        return redirect(url_for('user_posts', username=username))
+    db.session.add(u)
+    db.session.commit()
+    flash('You have stopped following ' + username + '.', 'danger')
+    return redirect(url_for('user_posts', username=username))
+
+
+@app.route("/subjects", methods=['POST', 'GET'])
+def subjects():
+    form = SortForm()
+    page = request.args.get('page', 1, type=int)
+    subjects = Subject.query.paginate(page=page, per_page=4)
+    if form.submit.data:
+        if form.sort.data == 1:
+            subjects = Subject.query.order_by(
+                Subject.average_rating.desc()).paginate(page=page, per_page=4)
+        elif form.sort.data == 2:
+            subjects = Subject.query.order_by(
+                Subject.average_rating.asc()).paginate(page=page, per_page=4)
+        elif form.sort.data == 3:
+            subjects = Subject.query.order_by(
+                Subject.title.desc()).paginate(page=page, per_page=4)
+        elif form.sort.data == 4:
+            subjects = Subject.query.order_by(
+                Subject.title.asc()).paginate(page=page, per_page=4)
+        elif form.sort.data == 5:
+            subjects = Subject.query.order_by(
+                Subject.code.asc()).paginate(page=page, per_page=4)
+
+    return render_template('subjects.html', subjects=subjects, form=form)

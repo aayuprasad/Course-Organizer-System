@@ -1,12 +1,83 @@
 {% extends "layout.html" %}
-{% block content %}
-    <h1 class="mb-3">Reviews of {{ subject.title }} ({{ reviews.total }})</h1>
+{% block content %}<center>
+    <h1 class="mb-3"><font color="red">{{ subject.title }}</font></h1>
+    <h5 class="mb-3"><font color="green">Subject Code:</font> {{ subject.code }}</h5>
+    <h5 class="mb-3"><font color="blue">Slot:</font> {{ subject.slot }}</h5>
+
+    <h6 class="mb-3">{{ subject.content }}</h6>
+    <h6 class="mb-3">Average rating: {{ average_rating }}</h6>
+</center>
+
+<hr>
+
+
+
+  <meta charset="utf-8" />
+  <title>{{ title }}</title>
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/1.0.2/Chart.min.js'></script>
+
+<center>
+    <h3>Ratings Distribution</h3>
+  </center>
+  <center>
+    <canvas id="chart" width="600" height="400"></canvas>
+    <script>
+      // bar chart data
+      var barData = {
+        labels : [
+          {% for item in labels %}
+           "{{ item }}",
+          {% endfor %}
+  ],
+
+        datasets : [{
+          fillColor: "rgba(151,187,205,0.2)",
+          strokeColor: "rgba(151,187,205,1)",
+          pointColor: "rgba(151,187,205,1)",
+          data : [
+            {% for item in values %}
+               "{{ item }}",
+              {% endfor %}
+      ]
+          }
+        ]
+      }
+
+     // get bar chart canvas
+     var mychart = document.getElementById("chart").getContext("2d");
+
+       steps = 10
+       max = {{max}}
+
+     // draw bar chart
+     new Chart(mychart).Bar(barData, {
+       scaleOverride: true,
+       scaleSteps: steps,
+       scaleStepWidth: Math.ceil(max / steps),
+       scaleStartValue: 0,
+       scaleShowVerticalLines: true,
+       scaleShowGridLines : true,
+       barShowStroke : true,
+       scaleShowLabels: true
+       }
+     );
+
+    </script>
+  </center>
+
+<hr>
+<center>
+     <a class="btn btn-secondary btn-sm mt-1 mb-1" href="{{ url_for('new_review',subject_title=subject.title) }}">{{ legend }}</a>
+<hr>
+</center>
+    <h5 class="mb-3">Reviews of {{ subject.title }} ({{ reviews.total }})</h1>
     {% for review in reviews.items %}
         <article class="media content-section">
           <img class="rounded-circle article-img" src="{{ url_for('static', filename='profile_pics/' + review.reviewer.image_file) }}">
           <div class="media-body">
             <div class="article-metadata">
               <a class="mr-2" href="{{ url_for('user_posts', username=review.reviewer.username) }}">{{ review.reviewer.username }}</a>
+              <a class="mr-1">{{ review.rating }} stars </a>
               <small class="text-muted">{{ review.date_posted.strftime('%Y-%m-%d') }}</small>
             </div>
             <h2><a class="article-title">{{ review.title }}</a></h2>
@@ -25,5 +96,6 @@
         ...
       {% endif %}
     {% endfor %}
-    <h3 style="font-size:15px"><a class="article-title" href="{{ url_for('new_review',subject_title=subject.title) }}">Add Review</a></h2>
+
+
 {% endblock content %}
