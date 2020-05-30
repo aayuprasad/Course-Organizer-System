@@ -389,6 +389,7 @@ def view_department(title):
 
 
 @app.route("/subjects/<subject_title>/details")
+@login_required
 def view_subject_details(subject_title):
     subject = Subject.query.filter_by(title=subject_title).first_or_404()
     page = request.args.get('page', 1, type=int)
