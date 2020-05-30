@@ -7,8 +7,8 @@ from cos.models import User, Department
 
 
 class SortForm(FlaskForm):
-    sort = SelectField('Sort by', coerce=int, choices=[(1, 'rating_desc'), (
-        2, 'rating_asc'), (3, 'title_desc'), (4, 'title_asc'), (5, 'subject_code_asc')])
+    sort = SelectField('Sort by', coerce=int, choices=[(1, 'Rating (High to Low)'), (
+        2, 'Rating (Low to High)'), (3, 'Title (alphabetical order)'), (4, 'Subject Code')])
     submit = SubmitField('Go')
 
 

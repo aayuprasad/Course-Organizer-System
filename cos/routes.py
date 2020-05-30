@@ -381,11 +381,8 @@ def view_department(title):
                 Subject.average_rating.asc()).paginate(page=page, per_page=4)
         elif form.sort.data == 3:
             subjects = Subject.query.filter_by(author=department).order_by(
-                Subject.title.desc()).paginate(page=page, per_page=4)
-        elif form.sort.data == 4:
-            subjects = Subject.query.filter_by(author=department).order_by(
                 Subject.title.asc()).paginate(page=page, per_page=4)
-        elif form.sort.data == 5:
+        elif form.sort.data == 4:
             subjects = Subject.query.filter_by(author=department).order_by(
                 Subject.code.asc()).paginate(page=page, per_page=4)
     return render_template('view_department.html', department=department, subjects=subjects, form=form)
@@ -538,22 +535,19 @@ def unfollow(username):
 def subjects():
     form = SortForm()
     page = request.args.get('page', 1, type=int)
-    subjects = Subject.query.paginate(page=page, per_page=4)
+    subjects = Subject.query.paginate(page=page, per_page=6)
     if form.submit.data:
         if form.sort.data == 1:
             subjects = Subject.query.order_by(
-                Subject.average_rating.desc()).paginate(page=page, per_page=4)
+                Subject.average_rating.desc()).paginate(page=page, per_page=6)
         elif form.sort.data == 2:
             subjects = Subject.query.order_by(
-                Subject.average_rating.asc()).paginate(page=page, per_page=4)
+                Subject.average_rating.asc()).paginate(page=page, per_page=6)
         elif form.sort.data == 3:
             subjects = Subject.query.order_by(
-                Subject.title.desc()).paginate(page=page, per_page=4)
+                Subject.title.asc()).paginate(page=page, per_page=6)
         elif form.sort.data == 4:
             subjects = Subject.query.order_by(
-                Subject.title.asc()).paginate(page=page, per_page=4)
-        elif form.sort.data == 5:
-            subjects = Subject.query.order_by(
-                Subject.code.asc()).paginate(page=page, per_page=4)
+                Subject.code.asc()).paginate(page=page, per_page=6)
 
     return render_template('subjects.html', subjects=subjects, form=form)

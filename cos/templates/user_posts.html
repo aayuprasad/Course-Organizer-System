@@ -4,7 +4,7 @@
 
     <div class="content-heading">
     <h1 class="mb-3"> {{ user.username }} </h1>
-    <h5> Name: {{ user.first_name }}</h5>
+    <h5> Name: {{ user.first_name }} {{ user.last_name }}</h5>
     {% if user.title == '1' %}
       <h5> Student </h5>
     {% elif user.title == '2' %}
