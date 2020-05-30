@@ -371,7 +371,8 @@ def view_department(title):
     form = SortForm()
     department = Department.query.filter_by(title=title).first_or_404()
     page = request.args.get('page', 1, type=int)
-    subjects = Subject.query.paginate(page=page, per_page=4)
+    subjects = Subject.query.filter_by(
+        author=department).paginate(page=page, per_page=4)
     if form.submit.data:
         if form.sort.data == 1:
             subjects = Subject.query.filter_by(author=department).order_by(
