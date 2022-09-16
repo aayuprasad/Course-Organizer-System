@@ -28,7 +28,7 @@ idna==2.0
 itsdangerous==1.1.0
 Jinja2==2.11.1
 lxml==4.5.1
-Mako==1.1.2
+Mako==1.2.2
 MarkupSafe==1.1.1
 migrate==0.3.8
 mysql-connector-python==8.0.19
